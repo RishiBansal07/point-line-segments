@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: WellD-Pattern-Recognition
+    version: "@project.version@"
+
+  profiles:
+    active:
+      - DEV
+
+logging:
+  level:
+    root: INFO
+
+server:
+  port: 8082
