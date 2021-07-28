@@ -1,75 +1,115 @@
 package com.example.wellD.linesegment.calculation;
 
-import com.example.wellD.linesegment.dto.LinePair;
+import com.example.wellD.linesegment.dto.SpacePoint;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+/*
+This class will find the points of the line segments passing through the N (entered by user) points
+ */
+
+@Slf4j
 @Service
 public class CalculationOfPoints {
 
-    public List<Set<LinePair>> maximumNumberOfPoints(int[][] points, int numberOfPoints) {
-        Map<String, Integer> finalMap = new HashMap<>();
-        Map<String, Set<LinePair>> finalPoints = new HashMap<>();
-        //if (points.length <= 2) return points.length;
+    public List<Set<SpacePoint>> maximumNumberOfPoints(int[][] points, int numberOfPoints) {
+        log.info("Getting all line segment points passing through at least: " + numberOfPoints + " points");
+
+        Map<String, Integer> noOfPointsWithSameSlopeMap = new HashMap<>();
+        Map<String, Set<SpacePoint>> pointsWithSameSlopeMap = new HashMap<>();
         int n = points.length;
-        List<Set<LinePair>> linePairs = new ArrayList<>();
         for (int i = 0; i < n - 1; i++) {
 
             Map<String, Integer> map = new HashMap<>();
-            LinePair pairX = new LinePair(points[i][0], points[i][1]);
+            SpacePoint pairX = new SpacePoint(points[i][0], points[i][1]);
             String nextKey = "";
             for (int j = i + 1; j < n; j++) {
 
-                int x = points[i][0] - points[j][0];
-                int y = points[i][1] - points[j][1];
-                if (x == 0 && y == 0) {
-                    continue;
-                }
-                // divide by gcd to reduce the factor in slope
-                int gcd = gcd(x, y);
-                x /= gcd;
-                y /= gcd;
-                String key = y + "/" + x;
-                String finalKey = "(" + points[i][0] + "," + points[i][1] + ")" + y + "/" + x;
-                LinePair pointPair = new LinePair(points[j][0], points[j][1]);
+                String finalKey = slopeCalculator(points[i], points[j]);
 
-                    if (nextKey != finalKey) {
-                        nextKey = finalKey;
+                if (finalKey == null) continue;
+
+                if (nextKey != finalKey) {
+                    nextKey = finalKey;
+                }
+
+                int counter = 1;
+                SpacePoint pointPair = new SpacePoint(points[j][0], points[j][1]);
+                Set<SpacePoint> pointSet = new HashSet<>();
+                pointSet.add(pairX);
+                pointSet.add(pointPair);
+                if (noOfPointsWithSameSlopeMap.containsKey(finalKey)) {
+                    counter = counter + noOfPointsWithSameSlopeMap.get(finalKey);
+                    for (SpacePoint pointsf : pointsWithSameSlopeMap.get(finalKey)) {
+                        pointSet.add(pointsf);
                     }
-                    int value = 1;
-                    Set<LinePair> pointSet = new HashSet<LinePair>();
-                    pointSet.add(pairX);
-                    pointSet.add(pointPair);
-                    if (finalMap.containsKey(finalKey)) {
-                        value = value + finalMap.get(finalKey);
-                        for (LinePair pointsf : finalPoints.get(finalKey)) {
-                            pointSet.add(pointsf);
-                        }
-                    }
-                    finalMap.put(nextKey, value);
-                    finalPoints.put(nextKey, pointSet);
+                }
+                noOfPointsWithSameSlopeMap.put(nextKey, counter);
+                pointsWithSameSlopeMap.put(nextKey, pointSet);
             }
 
-            System.out.println(map + " Considering origin point : (" + points[i][0] + "," + points[i][1] + ")");
-            System.out.println("=========Our Map" + finalMap);
-            System.out.println("=========Our Points" + finalPoints);
+            log.info(map + " Considering origin point : (" + points[i][0] + "," + points[i][1] + ")");
+            log.info("=========Map with slope (containing slope + origin point) and number of points with same slope"
+                    + noOfPointsWithSameSlopeMap);
+            log.info("=========Map with slope (containing slope + origin point) and set of points with same slope" +
+                    "" + pointsWithSameSlopeMap);
         }
 
+        return pointsOnLine(numberOfPoints, noOfPointsWithSameSlopeMap, pointsWithSameSlopeMap);
+    }
+
+    /**
+     *
+     * This method is returning the points of line segment passing through N points
+     * @param numberOfPoints
+     * @param noPointsWithSameSlopeMap
+     * @param pointsWithSameSlopeMap
+     * @return
+     */
+    private List<Set<SpacePoint>> pointsOnLine(int numberOfPoints, Map<String, Integer> noPointsWithSameSlopeMap, Map<String, Set<SpacePoint>> pointsWithSameSlopeMap) {
+        List<Set<SpacePoint>> SpacePoints = new ArrayList<>();
         List<String> returnPts = new ArrayList<>();
-        for (String inputKey : finalMap.keySet()) {
-            if (finalMap.get(inputKey) >= (numberOfPoints-1)) {
+        for (String inputKey : noPointsWithSameSlopeMap.keySet()) {
+            if (noPointsWithSameSlopeMap.get(inputKey) >= (numberOfPoints - 1)) {
                 returnPts.add(inputKey);
             }
         }
         for (String keyMap : returnPts) {
-            System.out.println("=====final points" + finalPoints.get(keyMap));
-            linePairs.add(finalPoints.get(keyMap));
+            log.info("=====Line segment points" + pointsWithSameSlopeMap.get(keyMap));
+            SpacePoints.add(pointsWithSameSlopeMap.get(keyMap));
         }
-        return linePairs;
+        return SpacePoints;
     }
 
-    private static int gcd(int x, int y) {
+    /**
+     * This method will calculate the slope of the points
+     * @param point
+     * @param point1
+     * @return
+     */
+    private String slopeCalculator(int[] point, int[] point1) {
+        int x = point[0] - point1[0];
+        int y = point[1] - point1[1];
+        if (x == 0 && y == 0) {
+            return null;
+        }
+        // divide by gcd to reduce the factor in slope
+        int gcd = gcd(x, y);
+        x /= gcd;
+        y /= gcd;
+        String finalKey = "(" + point[0] + "," + point[1] + ")" + y + "/" + x;
+        return finalKey;
+    }
+
+    /**
+     * Function to calculate the Greatest Common Divisor (GCD)
+     * @param x
+     * @param y
+     * @return
+     */
+    private int gcd(int x, int y) {
         if (y == 0) return x;
         return gcd(y, x % y);
     }
